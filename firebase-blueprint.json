@@ -1,0 +1,122 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "An inventory item tracked with barcode and stock level.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID"
+        },
+        "barcode": {
+          "type": "string",
+          "description": "Barcode or QR code value"
+        },
+        "name": {
+          "type": "string",
+          "description": "Product display name"
+        },
+        "category": {
+          "type": "string",
+          "description": "Category such as Makanan, Elektronik, etc."
+        },
+        "quantity": {
+          "type": "integer",
+          "description": "Current stock count"
+        },
+        "minStock": {
+          "type": "integer",
+          "description": "Minimum safety stock threshold for low stock alert"
+        },
+        "unit": {
+          "type": "string",
+          "description": "Measurement unit (pcs, box, kg, etc.)"
+        },
+        "buyPrice": {
+          "type": "number",
+          "description": "Cost/Purchase price in IDR"
+        },
+        "sellPrice": {
+          "type": "number",
+          "description": "Selling price in IDR"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Optional product notes or location rack"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when product was created"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp when product was last modified"
+        }
+      },
+      "required": ["userId", "barcode", "name", "category", "quantity", "minStock", "unit", "buyPrice", "sellPrice", "createdAt", "updatedAt"]
+    },
+    "StockTransaction": {
+      "title": "StockTransaction",
+      "description": "A stock mutation record (inbound, outbound, or adjustment).",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Owner user ID"
+        },
+        "productId": {
+          "type": "string",
+          "description": "Reference product ID"
+        },
+        "productName": {
+          "type": "string",
+          "description": "Cached product name"
+        },
+        "barcode": {
+          "type": "string",
+          "description": "Scanned barcode"
+        },
+        "type": {
+          "type": "string",
+          "enum": ["IN", "OUT", "ADJUSTMENT"],
+          "description": "Mutation type"
+        },
+        "quantity": {
+          "type": "integer",
+          "description": "Quantity changed"
+        },
+        "previousStock": {
+          "type": "integer",
+          "description": "Stock count before mutation"
+        },
+        "newStock": {
+          "type": "integer",
+          "description": "Stock count after mutation"
+        },
+        "reason": {
+          "type": "string",
+          "description": "Transaction note or reason"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Transaction recorded timestamp"
+        }
+      },
+      "required": ["userId", "productId", "productName", "barcode", "type", "quantity", "previousStock", "newStock", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}/products/{productId}": {
+      "schema": "Product",
+      "description": "User inventory items catalog"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "StockTransaction",
+      "description": "User stock mutations log for automated reporting"
+    }
+  }
+}

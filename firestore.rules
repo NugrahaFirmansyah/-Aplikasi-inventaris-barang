@@ -1,0 +1,93 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isValidProduct(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.barcode is string && data.barcode.size() >= 1 && data.barcode.size() <= 64 &&
+             data.name is string && data.name.size() >= 1 && data.name.size() <= 100 &&
+             data.category is string && data.category.size() >= 1 && data.category.size() <= 50 &&
+             data.quantity is int && data.quantity >= 0 &&
+             data.minStock is int && data.minStock >= 0 &&
+             data.unit is string && data.unit.size() >= 1 && data.unit.size() <= 20 &&
+             (data.buyPrice is int || data.buyPrice is float) && data.buyPrice >= 0 &&
+             (data.sellPrice is int || data.sellPrice is float) && data.sellPrice >= 0 &&
+             (!('notes' in data) || (data.notes is string && data.notes.size() <= 500));
+    }
+
+    function isValidStockTransaction(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.productId is string && data.productId.size() >= 1 && data.productId.size() <= 128 &&
+             data.productName is string && data.productName.size() >= 1 && data.productName.size() <= 100 &&
+             data.barcode is string && data.barcode.size() >= 1 && data.barcode.size() <= 64 &&
+             data.type in ['IN', 'OUT', 'ADJUSTMENT'] &&
+             data.quantity is int && data.quantity >= 0 &&
+             data.previousStock is int && data.previousStock >= 0 &&
+             data.newStock is int && data.newStock >= 0 &&
+             (!('reason' in data) || (data.reason is string && data.reason.size() <= 200));
+    }
+
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
+
+      match /products/{productId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(productId) &&
+                         request.resource.data.userId == request.auth.uid &&
+                         request.resource.data.createdAt is timestamp &&
+                         request.resource.data.createdAt <= request.time &&
+                         request.resource.data.updatedAt is timestamp &&
+                         request.resource.data.updatedAt <= request.time &&
+                         request.resource.data.keys().hasAll(['userId', 'barcode', 'name', 'category', 'quantity', 'minStock', 'unit', 'buyPrice', 'sellPrice', 'createdAt', 'updatedAt']) &&
+                         request.resource.data.keys().hasOnly(['userId', 'barcode', 'name', 'category', 'quantity', 'minStock', 'unit', 'buyPrice', 'sellPrice', 'notes', 'createdAt', 'updatedAt']) &&
+                         isValidProduct(request.resource.data);
+
+        allow update: if isOwner(userId) && isValidId(productId) &&
+                         request.resource.data.userId == resource.data.userId &&
+                         request.resource.data.createdAt == resource.data.createdAt &&
+                         request.resource.data.updatedAt is timestamp &&
+                         request.resource.data.updatedAt <= request.time &&
+                         isValidProduct(request.resource.data) &&
+                         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['barcode', 'name', 'category', 'quantity', 'minStock', 'unit', 'buyPrice', 'sellPrice', 'notes', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(productId);
+      }
+
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(transactionId) &&
+                         request.resource.data.userId == request.auth.uid &&
+                         request.resource.data.createdAt is timestamp &&
+                         request.resource.data.createdAt <= request.time &&
+                         request.resource.data.keys().hasAll(['userId', 'productId', 'productName', 'barcode', 'type', 'quantity', 'previousStock', 'newStock', 'createdAt']) &&
+                         request.resource.data.keys().hasOnly(['userId', 'productId', 'productName', 'barcode', 'type', 'quantity', 'previousStock', 'newStock', 'reason', 'createdAt']) &&
+                         isValidStockTransaction(request.resource.data);
+
+        // Transaction log is immutable once created
+        allow update: if false;
+
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+    }
+  }
+}

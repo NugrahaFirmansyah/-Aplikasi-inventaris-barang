@@ -1,0 +1,6 @@
+{
+  "name": "StokKilat",
+  "description": "Aplikasi manajemen inventaris barang cerdas dengan pemindaian barcode cepat, manajemen stok masuk/keluar, dan laporan analitik cloud otomatis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
